@@ -1,1 +1,46 @@
+pool:
+  name: Azure Pipelines
+#Your build pipeline references the ‘COMMIT1’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
+#Your build pipeline references the ‘COMMIT2’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
+variables:
+  salesforceDevOrgClientId: '3MVG9pRzvMkjMb6lNFOGuuFInaC6uB_.3nSHg1DwU3lDbj0luXewjPPxap.WXjAk2RPlPA4LVMt7bQpfwd6HP'
+  salesforceDevOrgUserName: 'puneetmalhotra21@nagarrodev.com'
+  salesforceDevOrgInstanceURL: 'https://nagarrodev-dev-ed.my.salesforce.com/'
 
+steps:
+- task: NodeTool@0
+  displayName: 'Use Node 14.x'
+  inputs:
+    versionSpec: 14.x
+    checkLatest: true
+
+- script: |
+    npm install sfdx-cli --global
+   $refss = git show-ref 
+   echo $refss
+  displayName: 'Install SFDX-CLI'
+
+- script: 'sfdx force:auth:jwt:grant --clientid $(salesforceDevOrgClientId) --jwtkeyfile ./buildfiles/server.key --username $(salesforceDevOrgUserName) --instanceurl $(salesforceDevOrgInstanceURL) -a devOrg'
+  displayName: 'SF Auth'
+
+- script: |
+   echo y | sfdx plugins:install sfdx-git-delta
+    echo $(Build.SourcesDirectory) 
+  displayName: 'Install SFDX-GIT-Delta'
+
+- script: 'sfdx sgd:source:delta --to $(COMMIT1) --from $(COMMIT2) --output . '
+  displayName: 'Fetch Commit'
+
+- script: |
+   echo Write your commands here
+   echo "--- package.xml generated with added and modified metadata ---"
+   cat package/package.xml
+   
+   
+  displayName: 'Fetch Package.xml'
+
+- script: |
+   echo "---- Deploying added and modified metadata ----"
+   sfdx force:source:deploy -x package/package.xml -u $(salesforceDevOrgUserName)
+   echo Hello world
+  displayName: Deploy
